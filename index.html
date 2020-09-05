@@ -1,0 +1,215 @@
+<head>
+  <style> body { margin: 0; } </style>
+
+  <script src="//unpkg.com/three"></script>
+  <script src="//unpkg.com/three-spritetext"></script>
+  <script src="//unpkg.com/3d-force-graph"></script>
+  <!--<script src="../../dist/3d-force-graph.js"></script>-->
+ <script type="text/javascript" src="graph.js"></script>
+ </head>
+
+<body>
+  <div id="3d-graph"></div>
+  <script src="three.js"></script>
+<div id="3d-graph"></div>
+
+    <div style="position: absolute; top: 5px; right: 5px;">
+    <button id="musicToggle" style="margin: 8px; height: 25px; width: 150px;">
+      Start Sounds
+    </button> 
+         </div>
+    
+<script>
+    /////////////////////////
+     var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+      
+      ////On button click we start init function containing the audio
+       var startButton = document.getElementById( 'musicToggle' );
+	    startButton.addEventListener( 'click', init );
+    
+    function init() {
+      
+      // create an AudioListener and add it to the camera
+            var listener = new THREE.AudioListener();
+            camera.add( listener );
+            
+            // create the PositionalAudio object (passing in the listener)
+             var sound = new THREE.PositionalAudio( listener );
+            
+            
+            // load a sound and set it as the PositionalAudio object's buffer
+            var audioLoader = new THREE.AudioLoader();
+         
+      
+           ///sound1 
+           var sound1 = new THREE.PositionalAudio( listener );
+           audioLoader.load( 'sounds/ambient.ogg', function( buffer ) {
+	       sound1.setBuffer( buffer );
+	       sound1.setRefDistance( 10 );
+           sound1.setDirectionalCone( 180, 130, 0.1 );
+           sound1.play();
+           });
+        
+        /// make sound1 loop after it ends
+          sound1.addEventListener('ended', function() {
+          this.currentTime = 0;
+          this.play();
+          }, false);
+          sound1.loop=true;
+           
+           ///sound2
+            var sound2 = new THREE.PositionalAudio( listener );
+           audioLoader.load( 'sounds/crickets.ogg', function( buffer ) {
+	       sound2.setBuffer( buffer );
+	       sound2.setRefDistance( 20 );
+           sound2.setDirectionalCone( 280, 230, 0.5 );
+        	sound2.play();
+           });
+        
+           
+        ////creating a sound sphere variable and new materials 
+                var sphere = new THREE.SphereBufferGeometry( 20, 32, 16 );
+
+				material1 = new THREE.MeshPhongMaterial( { depthWrite: false, transparent: true, opacity: 0 } );
+                material2 = new THREE.MeshPhongMaterial( { depthWrite: false, transparent: true, opacity: 0 } );
+				material3 = new THREE.MeshPhongMaterial( { color: 0x6622aa, flatShading: true, shininess: 0 } );
+           
+        //method to make materials tranpsarent
+       // new THREE.MeshBasicMaterial({ depthWrite: false, transparent: true, opacity: 0 })
+        
+      ////// Mesh 1 for sound 1
+               var mesh1 = new THREE.Mesh (sphere, material1);
+               mesh1.position.set(- 150, 0, 0 );
+               Graph.scene().add(mesh1);
+               mesh1.add(sound);
+           
+      ///////// Mesh 2 for sound 2
+               var mesh2 = new THREE.Mesh (sphere, material2);
+               mesh2.position.set(350, 50, 10 );
+               Graph.scene().add(mesh2);
+               mesh2.add(sound2);
+       }
+     //////////End of init function/////////////
+    
+    ///////////Start of our force graph parameters/properties //////////
+    
+   const elem = document.getElementById('3d-graph'); 
+   const Graph = ForceGraph3D()
+   
+    //Styling the graph
+    .backgroundColor('#000000') //black= #000000  white= #FFFFFF
+    .linkColor ('#FFFFFF')
+    .linkOpacity([0.6])
+    .linkWidth (0.3)
+    .linkResolution([8])
+    .linkDirectionalParticles(2)
+    .linkDirectionalParticleWidth(0.9)
+       
+   
+    /////Zoom in by mouse click///
+    .onNodeClick(node => {
+          // Aim at node from outside it
+          const distance = 80;
+          const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+        
+   //Here is the only camera instance of the code
+          Graph.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new position
+            node, // lookAt ({ x, y, z })
+            5000  // ms transition duration
+                
+          );
+         })
+   
+   /////End of "on mouse click" zoom camera function//////
+   
+   ///Here we specifiy de .json dataset to construct our graph, nodes and links are drwan upon the info on the .json file////////
+    (document.getElementById('3d-graph'))
+    .jsonUrl('../datasets/ArchiveImgsGeo.json') 
+   
+   ///Here we specify node styles and shape
+      
+       //.nodeLabel changin the color of the node label and getting decription form .json file
+        //.nodeAutoColorBy('user')
+        //.nodeLabel(d => `<span style="color: darkgrey">${d.description}</span>`)
+        .nodeLabel(node => `${node.user}: ${node.description}`)
+        .onNodeHover(node => elem.style.cursor = node ? 'pointer' : null)
+   
+   
+   ///Add a conditional for our node objects by group, group 1 has images, the rest only spheres:
+     
+    .nodeThreeObject(node => {
+    if ((node.group == 1)) { // this conditional is your implementation
+    // return image code
+            const obj = new THREE.Mesh(
+            new THREE.SphereGeometry(9),
+            new THREE.MeshBasicMaterial({ depthWrite: false, transparent: true, opacity: 0 })
+             );
+         const imgTexture = new THREE.TextureLoader().load(node.image);
+            //alpha test added to sprite material to enable transparent pngs
+        const material = new THREE.SpriteMaterial({ map: imgTexture, alphaTest: 0.5 });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(12, 12);
+        obj.add(sprite);
+      
+             return obj;
+  } else{
+    // return geometry code
+       const obj1 = new THREE.Mesh(
+           
+           ///random sphere diameter
+           //new THREE.SphereGeometry(Math.random() * 10),
+           
+            new THREE.SphereGeometry(5),
+            new THREE.MeshPhongMaterial( { color: 0x9FC5E8, flatShading: false, shininess: 3, transparent: true, opacity: 0.75 } )
+           
+           /*//Random color node geometries
+            new THREE.MeshLambertMaterial({
+            color: Math.round(Math.random() * Math.pow(2, 22)),
+            transparent: true,
+            opacity: 0.75
+          })*/
+       );
+          return obj1;
+    
+  };
+    
+})    
+    
+//////////////////////////////////////////////////////////////////////////////////////////////
+   
+   
+   
+   
+        
+ /*//////Here we add a new ThreeObject to our nodes////////
+           .nodeThreeObject(node => {     
+     //// use a sphere as a drag handle, this is where the node objects are created
+            const obj = new THREE.Mesh(
+            new THREE.SphereGeometry(12),
+            new THREE.MeshBasicMaterial({ depthWrite: false, transparent: true, opacity: 0 })
+             );
+            
+    //// add img sprite as child calling the image from the .json file
+        const imgTexture = new THREE.TextureLoader().load(node.image);
+            //alpha test added to sprite material to enable transparent pngs
+        const material = new THREE.SpriteMaterial({ map: imgTexture, alphaTest: 0.5 });
+        const sprite = new THREE.Sprite(material);
+        sprite.scale.set(10, 10);
+        obj.add(sprite);
+      
+             return obj;
+            
+        });*/
+    ////End of the properties of ThreeObject/////
+   
+
+    // Spread nodes a little wider so they don't overlap woth each other
+    Graph.d3Force('charge').strength(-220);
+    
+      
+    
+</script>
+       
+    </body>
